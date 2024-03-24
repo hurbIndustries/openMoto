@@ -3,7 +3,7 @@
 #include <SPI.h>
 
 // MASTER VERSION NUM
-#define ver_id "0.0.1"
+#define ver_id "0.0.2"
 
 // Define some quick constants for the basic MFD
 // Adafruit 2.5" ST7789 display
@@ -20,6 +20,8 @@ int mfd_brt = 170;
 bool bt_stat = false; 
 int speed = 0;
 int pageNum = 1;
+bool pageChange = false;
+int lastPage; 
 
 // Bluetooth test bitmap
 // 'Pictogrammers-Material-Light-Bluetooth', 32x32px
@@ -75,7 +77,7 @@ void bootSplash() {
 void pageBar() {
   mfd.drawLine(0, 290, 320, 290, ST77XX_WHITE);
   mfd.setTextSize(2);
-  mfd.setCursor(5, 300);
+  mfd.setCursor(7, 300);
   mfd.print("SPD");
   mfd.drawLine(50, 290, 50, 320, ST77XX_WHITE);
   mfd.setCursor(60, 300);
@@ -91,7 +93,42 @@ void pageBar() {
   mfd.print("C");
 }
 
+void setPage(int page) {
+  if(pageChange) {
+    mfd.fillRect(0, 275, 240, 10, ST77XX_BLACK);
+    resetArea();
+    pageChange = false;
+  }
+  if(pageNum == 1) {
+    mfd.fillTriangle(20, 277, 30, 277, 25, 285, ST77XX_WHITE); 
+  } else
+  if(pageNum == 2) {
+    mfd.fillTriangle(70, 277, 80, 277, 75, 285, ST77XX_WHITE);
+  } else 
+  if(pageNum == 3) {
+    mfd.fillTriangle(125, 277, 135, 277, 130, 285, ST77XX_WHITE);
+  } else
+  if(pageNum == 4) {
+    mfd.fillTriangle(180, 277, 190, 277, 185, 285, ST77XX_WHITE);
+  } else 
+  if(pageNum == 5) {
+    mfd.fillTriangle(225, 277, 235, 277, 230, 285, ST77XX_WHITE);
+  } else {
+    pageNum = 1;
+  }
+}
+
+void resetArea() {
+  mfd.fillRect(0, 33, 240, 260, ST77XX_BLACK);
+}
+
+void refreshSpeed() {
+  mfd.fillRe
+  speed++;
+}
+
 void speedPage() {
+  refreshSpeed();
   mfd.setTextSize(10);
   if(speed <= 9) {
     mfd.setCursor(50, 120);
@@ -104,15 +141,63 @@ void speedPage() {
   mfd.print(speed);
   mfd.setTextSize(5);
   mfd.print("mph");
+}
 
+void mpgPage() {
+}
+
+void musPage() {
+}
+
+void afrPage() {
+}
+
+void cfgPage() {
 }
 
 void loop() {
+  if(Serial.available()) {
+    String data = Serial.readString();
+    if(data == "n") {
+      pageNum++;
+      Serial.println(pageNum);
+    } else
+    if(data == "p") {
+      pageNum--;
+      Serial.println(pageNum);
+    }
+  }
   btIcon();
   pageBar();
+  if(lastPage != pageNum) {
+    pageChange = true;
+  }
+  lastPage = pageNum;
   switch(pageNum) {
     case 1:
+      setPage(pageNum);
       speedPage();
+      break;
+    case 2:
+      setPage(pageNum);
+      mpgPage();
+      break;
+    case 3:
+      setPage(pageNum);
+      musPage();
+      break;
+    case 4:
+      setPage(pageNum);
+      musPage();
+      break;
+    case 5:
+      pageBar();
+      setPage(pageNum);
+      cfgPage();
+      break;
+    default:
+      pageNum = 1;
+      setPage(pageNum);
       break;
   }
 }
