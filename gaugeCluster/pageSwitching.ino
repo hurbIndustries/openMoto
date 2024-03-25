@@ -1,6 +1,6 @@
 // Initialize the page bar at the bottom of the UI.
 void pageBar() {
-  mfd.drawLine(0, 34, 240, 34, ui_color);
+  mfd.fillRect(0, 32, 240, 2, ui_color);
   mfd.drawLine(0, 290, 320, 290, ui_color);
   mfd.setTextSize(2);
   mfd.setCursor(7, 300);
