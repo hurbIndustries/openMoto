@@ -3,7 +3,7 @@
 #include <SPI.h>
 
 // MASTER VERSION NUM
-#define ver_id "0.0.2"
+#define ver_id "0.0.3"
 
 // Define some quick constants for the basic MFD
 // Adafruit 2.5" ST7789 display
@@ -16,8 +16,12 @@
 Adafruit_ST7789 mfd = Adafruit_ST7789(mfd_CS, mfd_DC, mfd_RS);
 
 // Global Variables
-int mfd_brt = 170;
+int mfd_brt = 160;
+int mfd_nightBrt = 40;
+int mfd_dayBrt = 255;
+bool mfd_night;
 bool bt_stat = false; 
+bool bt_stateChange = false;
 int speed = 0;
 int pageNum = 1;
 bool pageChange = false;
@@ -36,14 +40,20 @@ const unsigned char epd_bitmap_Pictogrammers_Material_Light_Bluetooth [] PROGMEM
 	0x00, 0x01, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-void btIcon() {
-  if(bt_stat == true) {
-    mfd.drawBitmap(208, 0, epd_bitmap_Pictogrammers_Material_Light_Bluetooth, 32, 32, ST77XX_CYAN);
-  } else {
-    mfd.drawBitmap(208, 0, epd_bitmap_Pictogrammers_Material_Light_Bluetooth, 32, 32, ST77XX_WHITE);
-    mfd.drawLine(208, 0, 240, 32, ST77XX_WHITE);
-    mfd.drawLine(208, 32, 240, 0, ST77XX_WHITE);
-  }
+void btDispOn() {
+  bt_stat = true;
+  mfd.fillRect(207, 0, 33, 33, ST77XX_BLACK);
+  mfd.drawBitmap(208, 0, epd_bitmap_Pictogrammers_Material_Light_Bluetooth, 32, 32, ST77XX_CYAN);
+  bt_stateChange = false;
+}
+
+void btDispOff() {
+  bt_stat = false;
+  mfd.fillRect(207, 0, 33, 33, ST77XX_BLACK);
+  mfd.drawBitmap(208, 0, epd_bitmap_Pictogrammers_Material_Light_Bluetooth, 32, 32, ST77XX_WHITE);
+  mfd.drawLine(208, 0, 240, 32, ST77XX_WHITE);
+  mfd.drawLine(208, 32, 240, 0, ST77XX_WHITE);
+  bt_stateChange = false;
 }
 
 void setup() {
@@ -51,10 +61,11 @@ void setup() {
   Serial.begin(9600);
   pinMode(mfd_bright, OUTPUT);
   mfd.init(240, 320);
-  analogWrite(mfd_bright, 170);
+  analogWrite(mfd_bright, mfd_brt);
   bootSplash();
   delay(3000);
   mfd.fillScreen(ST77XX_BLACK);
+  btDispOff();
 }
 
 // Bootsplash.
@@ -122,13 +133,7 @@ void resetArea() {
   mfd.fillRect(0, 33, 240, 260, ST77XX_BLACK);
 }
 
-void refreshSpeed() {
-  mfd.fillRe
-  speed++;
-}
-
 void speedPage() {
-  refreshSpeed();
   mfd.setTextSize(10);
   if(speed <= 9) {
     mfd.setCursor(50, 120);
@@ -156,6 +161,8 @@ void cfgPage() {
 }
 
 void loop() {
+  analogWrite(mfd_bright, mfd_brt);
+  // Debug serial stuff <3 
   if(Serial.available()) {
     String data = Serial.readString();
     if(data == "n") {
@@ -165,15 +172,50 @@ void loop() {
     if(data == "p") {
       pageNum--;
       Serial.println(pageNum);
+    } else 
+    if(data == "bt") {
+      if(bt_stat) {
+        bt_stateChange = true;
+        Serial.println("Bluetooth test off");
+      } else {
+        bt_stateChange = true;
+        Serial.println("Bluetooth test on;");
+      }
+    } else
+    if(data == "blTime") {
+      if(mfd_night) {
+        Serial.println("Setting MFD to Day...");
+        mfd_brt = mfd_dayBrt;
+        mfd_night = false;
+       } else {
+        Serial.println("Setting MFD to Night...");
+        mfd_brt = mfd_nightBrt;
+        mfd_night = true;
+       }
+    } else 
+    if(data == "blIncr") {
+      mfd_brt = mfd_brt + 20;
+    } else 
+    if(data == "blDecr") {
+      mfd_brt = mfd_brt - 20;
     }
   }
-  btIcon();
+  if(bt_stat && bt_stateChange) {
+    btDispOff(); 
+  } else 
+  if(bt_stateChange) {
+    btDispOn();
+  }
   pageBar();
   if(lastPage != pageNum) {
     pageChange = true;
   }
   lastPage = pageNum;
   switch(pageNum) {
+    case 0:
+      pageNum = 5;
+      setPage(pageNum);
+      break;
     case 1:
       setPage(pageNum);
       speedPage();
@@ -194,6 +236,10 @@ void loop() {
       pageBar();
       setPage(pageNum);
       cfgPage();
+      break;
+    case 6:
+      pageNum = 1;
+      setPage(pageNum);
       break;
     default:
       pageNum = 1;
